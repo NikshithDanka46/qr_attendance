@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Attendance Records — ATTENDR{% endblock %}
+{% block page_title %}Attendance Records{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('export_csv') }}" class="btn btn-ghost btn-sm">
+    <i class="fas fa-file-csv" style="color:var(--teal)"></i> Export CSV
+  </a>
+{% endblock %}
+
+{% block content %}
+
+<!-- FILTER BAR -->
+<form method="GET" action="{{ url_for('attendance_dashboard') }}">
+  <div class="filter-bar">
+    <div class="form-group">
+      <label class="form-label">YEAR</label>
+      <select name="year" class="form-control">
+        <option value="">All Years</option>
+        <option {% if year == '1st Year' %}selected{% endif %}>1st Year</option>
+        <option {% if year == '2nd Year' %}selected{% endif %}>2nd Year</option>
+        <option {% if year == '3rd Year' %}selected{% endif %}>3rd Year</option>
+        <option {% if year == '4th Year' %}selected{% endif %}>4th Year</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">BRANCH</label>
+      <select name="branch" class="form-control">
+        <option value="">All Branches</option>
+        <option {% if branch == 'CS' %}selected{% endif %}>CS</option>
+        <option {% if branch == 'IT' %}selected{% endif %}>IT</option>
+        <option {% if branch == 'EC' %}selected{% endif %}>EC</option>
+        <option {% if branch == 'ME' %}selected{% endif %}>ME</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">SUBJECT</label>
+      <select name="subject_id" class="form-control">
+        <option value="">All Subjects</option>
+        {% for s in subjects %}
+        <option value="{{ s.id }}" {% if subject_id == s.id|string %}selected{% endif %}>
+          {{ s.name.title() }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">DATE</label>
+      <input type="date" name="date" class="form-control" value="{{ date_str }}"/>
+    </div>
+    <button type="submit" class="btn btn-primary">
+      <i class="fas fa-filter"></i> Filter
+    </button>
+    <a href="{{ url_for('attendance_dashboard') }}" class="btn btn-ghost">
+      <i class="fas fa-rotate-left"></i> Reset
+    </a>
+  </div>
+</form>
+
+<!-- SUMMARY CHIPS -->
+<div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+  <div style="padding:10px 18px;background:var(--panel);border:1px solid var(--border);border-radius:var(--r-md);">
+    <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);">RECORDS</span>
+    <span style="font-family:'Bebas Neue',sans-serif;font-size:22px;margin-left:10px;color:var(--accent-h);">{{ records|length }}</span>
+  </div>
+  <div style="padding:10px 18px;background:var(--panel);border:1px solid var(--border);border-radius:var(--r-md);">
+    <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);">UNIQUE STUDENTS</span>
+    <span style="font-family:'Bebas Neue',sans-serif;font-size:22px;margin-left:10px;color:var(--teal);">{{ unique_students }}</span>
+  </div>
+</div>
+
+<!-- TABLE -->
+<div class="card">
+  <div class="card-body" style="padding:0;">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>STUDENT</th>
+            <th>PIN</th>
+            <th>SUBJECT</th>
+            <th>YEAR / BRANCH</th>
+            <th>TIMESTAMP</th>
+            <th>METHOD</th>
+            <th>IP</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for att, user, sess, subj in records %}
+          <tr>
+            <td class="text-muted font-mono text-xs">{{ loop.index }}</td>
+            <td>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div class="avatar" style="width:30px;height:30px;font-size:11px;">{{ user.name[0].upper() }}</div>
+                <span style="font-weight:500;">{{ user.name }}</span>
+              </div>
+            </td>
+            <td><span class="badge badge-neutral font-mono">{{ user.pin }}</span></td>
+            <td style="text-transform:capitalize;font-weight:500;">{{ subj.name }}</td>
+            <td class="text-muted text-sm">{{ sess.year }} · {{ sess.branch }}</td>
+            <td class="font-mono text-xs" style="color:var(--text2);">{{ att.timestamp.strftime('%d %b %Y %H:%M') }}</td>
+            <td>
+              {% if att.is_manual %}
+                <span class="badge badge-amber">✏️ Manual</span>
+              {% else %}
+                <span class="badge badge-teal">📱 QR Scan</span>
+              {% endif %}
+            </td>
+            <td class="font-mono text-xs text-muted">{{ att.ip_address or '—' }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8">
+              <div class="empty-state"><i class="fas fa-inbox"></i><p>No records found with current filters.</p></div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

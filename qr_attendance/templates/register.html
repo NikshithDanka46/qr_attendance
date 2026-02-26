@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Register — ATTENDR{% endblock %}
+
+{% block auth_content %}
+<style>
+.reg-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  position: relative;
+}
+.grid-bg {
+  position: fixed; inset: 0;
+  background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 48px 48px;
+  opacity: 0.2;
+  pointer-events: none;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 80%);
+}
+.reg-box {
+  width: 100%;
+  max-width: 500px;
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: var(--r-xl);
+  padding: 40px;
+  box-shadow: var(--shadow-lg);
+  animation: slideUp 0.5s cubic-bezier(0.4,0,0.2,1);
+}
+</style>
+<div class="grid-bg"></div>
+<div class="reg-wrap">
+  <div class="reg-box">
+    <div style="text-align:center;margin-bottom:32px;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:40px;letter-spacing:4px;background:linear-gradient(135deg,var(--accent),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">ATTENDR</div>
+      <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-top:4px;">Student Registration</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:6px;">Create your student account</div>
+    </div>
+
+    <form method="POST" action="{{ url_for('register') }}">
+      <div class="form-group">
+        <label class="form-label">FULL NAME</label>
+        <input type="text" name="name" class="form-control" placeholder="Your full name" required/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">PIN / ROLL NUMBER</label>
+        <input type="text" name="pin" class="form-control" placeholder="e.g. 23005-CS-055" required/>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">YEAR</label>
+          <select name="year" class="form-control" required>
+            <option value="">Select Year</option>
+            <option>1st Year</option>
+            <option>2nd Year</option>
+            <option>3rd Year</option>
+            <option>4th Year</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">BRANCH</label>
+          <select name="branch" class="form-control" required>
+            <option value="">Select Branch</option>
+            <option>CS</option>
+            <option>IT</option>
+            <option>EC</option>
+            <option>ME</option>
+            <option>CE</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">PASSWORD</label>
+        <input type="password" name="password" class="form-control" placeholder="Create a password" required/>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full btn-lg" style="margin-top:8px;">
+        <i class="fas fa-user-plus"></i> Create Account
+      </button>
+    </form>
+
+    <div style="text-align:center;margin-top:20px;font-size:13px;color:var(--text2);">
+      Already have an account? <a href="{{ url_for('login') }}" style="color:var(--accent-h);text-decoration:none;font-weight:500;">Sign in</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,383 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In — ATTENDR{% endblock %}
+
+{% block auth_content %}
+<style>
+.login-wrap {
+  min-height: 100vh;
+  display: flex;
+  overflow: hidden;
+}
+
+.login-left {
+  flex: 1;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-left::before {
+  content: '';
+  position: absolute;
+  width: 600px; height: 600px;
+  background: radial-gradient(ellipse, rgba(108,99,255,0.12) 0%, transparent 70%);
+  top: -200px; left: -200px;
+  pointer-events: none;
+}
+
+.login-left::after {
+  content: '';
+  position: absolute;
+  width: 400px; height: 400px;
+  background: radial-gradient(ellipse, rgba(0,212,170,0.08) 0%, transparent 70%);
+  bottom: -100px; right: -100px;
+  pointer-events: none;
+}
+
+.hero-logo {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 80px;
+  letter-spacing: 8px;
+  background: linear-gradient(135deg, var(--accent-h) 0%, var(--teal) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+  margin-bottom: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-tagline {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--text3);
+  letter-spacing: 4px;
+  margin-bottom: 48px;
+  position: relative;
+  z-index: 1;
+}
+
+.feature-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 340px;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  transition: all 0.25s;
+  animation: slideUp 0.5s both;
+}
+.feature-item:nth-child(1) { animation-delay: 0.1s; }
+.feature-item:nth-child(2) { animation-delay: 0.2s; }
+.feature-item:nth-child(3) { animation-delay: 0.3s; }
+.feature-item:nth-child(4) { animation-delay: 0.4s; }
+
+.feature-item:hover {
+  border-color: var(--border3);
+  background: var(--panel2);
+  transform: translateX(4px);
+}
+
+.feature-icon {
+  width: 36px; height: 36px;
+  border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.feature-text strong {
+  display: block;
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+.feature-text span {
+  font-size: 12px;
+  color: var(--text2);
+}
+
+/* RIGHT SIDE */
+.login-right {
+  width: 460px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 40px;
+  position: relative;
+}
+
+.login-box {
+  width: 100%;
+  max-width: 380px;
+  animation: slideUp 0.5s cubic-bezier(0.4,0,0.2,1) both;
+}
+
+.login-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 26px;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.login-sub {
+  color: var(--text2);
+  font-size: 14px;
+  margin-bottom: 32px;
+}
+
+.tab-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 28px;
+}
+
+.tab-btn {
+  padding: 10px;
+  border: none;
+  background: none;
+  border-radius: var(--r-sm);
+  color: var(--text2);
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.25s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.tab-btn.active {
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 4px 12px rgba(108,99,255,0.35);
+}
+
+.input-icon-wrap {
+  position: relative;
+}
+.input-icon-wrap .fa {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text3);
+  font-size: 14px;
+}
+.input-icon-wrap .form-control { padding-left: 40px; }
+
+.forgot-link {
+  text-align: right;
+  margin-top: -10px;
+  margin-bottom: 18px;
+}
+.forgot-link a {
+  color: var(--text3);
+  font-size: 12px;
+  text-decoration: none;
+  font-family: 'Space Mono', monospace;
+  transition: color 0.2s;
+}
+.forgot-link a:hover { color: var(--accent-h); }
+
+.register-link {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 13px;
+  color: var(--text2);
+}
+.register-link a {
+  color: var(--accent-h);
+  text-decoration: none;
+  font-weight: 500;
+}
+.register-link a:hover { text-decoration: underline; }
+
+/* GRID BG */
+.grid-bg {
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 48px 48px;
+  opacity: 0.2;
+  pointer-events: none;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 80%);
+}
+
+@media (max-width: 768px) {
+  .login-left { display: none; }
+  .login-right { width: 100%; }
+}
+</style>
+
+<div class="grid-bg"></div>
+<div class="login-wrap">
+
+  <!-- LEFT HERO -->
+  <div class="login-left">
+    <div class="hero-logo">ATTENDR</div>
+    <div class="hero-tagline">SMART ATTENDANCE MANAGEMENT SYSTEM</div>
+
+    <div class="feature-list">
+      <div class="feature-item">
+        <div class="feature-icon" style="background:rgba(108,99,255,0.15); color:var(--accent-h)">
+          <i class="fas fa-qrcode"></i>
+        </div>
+        <div class="feature-text">
+          <strong>Dynamic QR Rotation</strong>
+          <span>Token refreshes every 15 seconds</span>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon" style="background:rgba(0,212,170,0.15); color:var(--teal)">
+          <i class="fas fa-location-dot"></i>
+        </div>
+        <div class="feature-text">
+          <strong>Geolocation Validation</strong>
+          <span>Must be within 80m of campus</span>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon" style="background:rgba(255,209,102,0.15); color:var(--amber)">
+          <i class="fas fa-shield-halved"></i>
+        </div>
+        <div class="feature-text">
+          <strong>Anti-Cheat Security</strong>
+          <span>Suspicious activity detection</span>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon" style="background:rgba(255,107,107,0.15); color:var(--red)">
+          <i class="fas fa-chart-line"></i>
+        </div>
+        <div class="feature-text">
+          <strong>Live Analytics</strong>
+          <span>Real-time attendance tracking</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT LOGIN -->
+  <div class="login-right">
+    <div class="login-box">
+      <div class="login-title">Welcome back 👋</div>
+      <div class="login-sub">Sign in to continue to your dashboard</div>
+
+      <!-- ROLE TABS -->
+      <div class="tab-row" id="role-tabs">
+        <button class="tab-btn active" onclick="setRole('student', this)">
+          <i class="fas fa-graduation-cap"></i> Student
+        </button>
+        <button class="tab-btn" onclick="setRole('admin', this)">
+          <i class="fas fa-user-shield"></i> Admin
+        </button>
+      </div>
+
+      <form method="POST" action="{{ url_for('login') }}" id="login-form">
+
+        <div class="form-group">
+          <label class="form-label">PIN / ID</label>
+          <div class="input-icon-wrap">
+            <i class="fas fa-id-badge"></i>
+            <input type="text" name="pin" class="form-control" placeholder="Enter your PIN" required autocomplete="username"/>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">PASSWORD</label>
+          <div class="input-icon-wrap">
+            <i class="fas fa-lock"></i>
+            <input type="password" name="password" class="form-control" placeholder="Enter password" required autocomplete="current-password" id="pw-input"/>
+            <button type="button" onclick="togglePw()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;">
+              <i class="fas fa-eye" id="eye-icon"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="forgot-link">
+          <a href="#">Forgot password?</a>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full btn-lg" id="login-btn">
+          <i class="fas fa-right-to-bracket"></i>
+          Sign In
+        </button>
+      </form>
+
+      <div class="register-link">
+        Don't have an account? <a href="{{ url_for('register') }}">Register here</a>
+      </div>
+
+      <!-- DEMO HINT -->
+      <div style="margin-top:28px; padding:14px; background:var(--bg3); border:1px solid var(--border); border-radius:var(--r-md);">
+        <div style="font-family:'Space Mono',monospace; font-size:10px; color:var(--text3); letter-spacing:1.5px; margin-bottom:8px;">DEFAULT CREDENTIALS</div>
+        <div style="font-size:12px; color:var(--text2); display:flex; gap:16px; flex-wrap:wrap;">
+          <span><strong style="color:var(--text)">Admin:</strong> admin / admin123</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function setRole(role, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const hint = document.querySelector('[style*="DEFAULT CREDENTIALS"]').parentElement;
+  if (role === 'admin') {
+    hint.style.display = 'block';
+  } else {
+    hint.style.display = 'none';
+  }
+}
+
+function togglePw() {
+  const inp = document.getElementById('pw-input');
+  const ico = document.getElementById('eye-icon');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    ico.className = 'fas fa-eye-slash';
+  } else {
+    inp.type = 'password';
+    ico.className = 'fas fa-eye';
+  }
+}
+
+document.getElementById('login-form').addEventListener('submit', function() {
+  const btn = document.getElementById('login-btn');
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in...';
+  btn.disabled = true;
+});
+</script>
+{% endblock %}

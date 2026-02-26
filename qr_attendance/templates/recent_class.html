@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block title %}Recent Class — ATTENDR{% endblock %}
+{% block page_title %}Recent Class Manager{% endblock %}
+
+{% block content %}
+
+<div style="display:grid;grid-template-columns:1fr 360px;gap:20px;">
+
+  <!-- LEFT: ATTENDEES -->
+  <div style="display:flex;flex-direction:column;gap:16px;">
+
+    {% if recent_session %}
+    <!-- SESSION INFO -->
+    <div class="card" style="border-color:rgba(0,212,170,0.3);">
+      <div class="card-body">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+          <div>
+            <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:2px;margin-bottom:6px;">LATEST SESSION</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;text-transform:capitalize;letter-spacing:1px;">
+              {{ recent_session.subject.name }}
+            </div>
+            <div style="font-size:12px;color:var(--text2);font-family:'Space Mono',monospace;margin-top:4px;">
+              {{ recent_session.year }} · {{ recent_session.branch }} · {{ recent_session.created_at.strftime('%d %b %Y, %I:%M %p') }}
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:48px;line-height:1;color:var(--teal);">
+              {{ attendance_list|length }}
+            </div>
+            <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);">PRESENT</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ATTENDANCE TABLE -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Attendance List</div>
+        <span class="badge badge-teal">{{ attendance_list|length }} students</span>
+      </div>
+      <div class="card-body" style="padding:0;">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>STUDENT</th>
+                <th>PIN</th>
+                <th>TIME</th>
+                <th>METHOD</th>
+                <th>LOCATION</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for att, user in attendance_list %}
+              <tr>
+                <td class="text-muted font-mono text-xs">{{ loop.index }}</td>
+                <td>
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <div class="avatar" style="width:30px;height:30px;font-size:11px;">{{ user.name[0].upper() }}</div>
+                    {{ user.name }}
+                  </div>
+                </td>
+                <td><span class="badge badge-neutral font-mono">{{ user.pin }}</span></td>
+                <td class="font-mono text-xs text-muted">{{ att.timestamp.strftime('%H:%M:%S') }}</td>
+                <td>
+                  {% if att.is_manual %}
+                    <span class="badge badge-amber">✏️ Manual</span>
+                  {% else %}
+                    <span class="badge badge-teal">📱 QR</span>
+                  {% endif %}
+                </td>
+                <td class="font-mono text-xs text-muted">
+                  {% if att.latitude and att.latitude != 'Manual' %}
+                    {{ att.latitude[:8] }}, {{ att.longitude[:8] }}
+                  {% else %}
+                    Manual Entry
+                  {% endif %}
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="6">
+                  <div class="empty-state"><i class="fas fa-user-clock"></i><p>No attendance yet for this session.</p></div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    {% else %}
+    <div class="empty-state card" style="padding:60px;">
+      <i class="fas fa-chalkboard" style="font-size:48px;margin-bottom:16px;opacity:0.3;display:block;text-align:center;"></i>
+      <p style="text-align:center;">No sessions found. <a href="{{ url_for('start_class') }}" style="color:var(--accent-h)">Start one!</a></p>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <!-- RIGHT: MANUAL ENTRY -->
+  <div style="display:flex;flex-direction:column;gap:16px;">
+
+    <!-- SESSION SELECTOR -->
+    <div class="card">
+      <div class="card-header"><div class="card-title">Select Session</div></div>
+      <div class="card-body">
+        <form method="GET" action="{{ url_for('recent_class') }}">
+          <div class="form-row" style="margin-bottom:0;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">YEAR FILTER</label>
+              <select name="year" class="form-control" onchange="this.form.submit()">
+                <option value="">All</option>
+                <option {% if year == '1st Year' %}selected{% endif %}>1st Year</option>
+                <option {% if year == '2nd Year' %}selected{% endif %}>2nd Year</option>
+                <option {% if year == '3rd Year' %}selected{% endif %}>3rd Year</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">BRANCH FILTER</label>
+              <select name="branch" class="form-control" onchange="this.form.submit()">
+                <option value="">All</option>
+                <option {% if branch == 'CS' %}selected{% endif %}>CS</option>
+                <option {% if branch == 'IT' %}selected{% endif %}>IT</option>
+                <option {% if branch == 'EC' %}selected{% endif %}>EC</option>
+              </select>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MANUAL ADD -->
+    {% if recent_session %}
+    <div class="card" style="border-color:rgba(255,209,102,0.3);">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-user-plus" style="color:var(--amber);margin-right:8px"></i>Add Manually</div>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('recent_class', year=year, branch=branch) }}">
+          <input type="hidden" name="session_id" value="{{ recent_session.id }}"/>
+          <div class="form-group">
+            <label class="form-label">STUDENT PIN</label>
+            <input type="text" name="pin" class="form-control"
+                   placeholder="e.g. 23005-CS-055" required
+                   autocomplete="off"/>
+          </div>
+          <div style="background:rgba(255,209,102,0.06);border:1px solid rgba(255,209,102,0.2);border-radius:var(--r-md);padding:12px;margin-bottom:14px;font-size:12px;color:var(--text2);">
+            <i class="fas fa-triangle-exclamation" style="color:var(--amber);margin-right:6px;"></i>
+            Manual entries are logged separately. Student data is fetched automatically.
+          </div>
+          <button type="submit" class="btn btn-primary btn-full">
+            <i class="fas fa-plus"></i> Mark Attendance
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- SESSION SWITCHER -->
+    <div class="card">
+      <div class="card-header"><div class="card-title">Recent Sessions</div></div>
+      <div style="max-height:280px;overflow-y:auto;">
+        {% for s in all_sessions %}
+        <a href="{{ url_for('recent_class') }}?session={{ s.id }}"
+           style="display:flex;align-items:center;gap:12px;padding:10px 20px;border-bottom:1px solid var(--border);text-decoration:none;transition:background 0.15s;"
+           onmouseover="this.style.background='var(--panel2)'" onmouseout="this.style.background=''">
+          <div style="width:8px;height:8px;border-radius:50%;background:{{ 'var(--teal)' if s.is_active and not s.is_expired() else 'var(--text3)' }};flex-shrink:0;"></div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:500;font-family:'Syne',sans-serif;text-transform:capitalize;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ s.subject.name }}</div>
+            <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;">{{ s.branch }} {{ s.year }} · {{ s.created_at.strftime('%d %b') }}</div>
+          </div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--teal);">{{ s.attendances.count() }}</div>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Start Class — ATTENDR{% endblock %}
+{% block page_title %}Start New Class Session{% endblock %}
+
+{% block content %}
+<div style="max-width:600px; margin:0 auto;">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fas fa-play-circle" style="color:var(--teal);margin-right:8px"></i>Create Class Session</div>
+    </div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('start_class') }}" id="start-form">
+
+        <div class="form-group">
+          <label class="form-label">SUBJECT NAME</label>
+          <input type="text" name="subject_name" class="form-control"
+                 placeholder="e.g. Data Structures" required
+                 list="subjects-list" autocomplete="off"/>
+          <datalist id="subjects-list">
+            {% for s in subjects %}
+            <option value="{{ s.name.title() }}">{{ s.branch }} / {{ s.year }}</option>
+            {% endfor %}
+          </datalist>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">YEAR</label>
+            <select name="year" class="form-control" required>
+              <option value="">Select Year</option>
+              <option>1st Year</option>
+              <option>2nd Year</option>
+              <option>3rd Year</option>
+              <option>4th Year</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">BRANCH</label>
+            <select name="branch" class="form-control" required>
+              <option value="">Select Branch</option>
+              <option>CS</option>
+              <option>IT</option>
+              <option>EC</option>
+              <option>ME</option>
+              <option>CE</option>
+              <option>EE</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">DURATION (MINUTES)</label>
+          <input type="number" name="duration" class="form-control"
+                 placeholder="Enter minutes e.g. 45, 60, 90"
+                 min="5" max="300" required
+                 style="font-family:'Space Mono',monospace;font-size:15px;"/>
+          <div style="font-size:11px;color:var(--text3);margin-top:6px;font-family:'Space Mono',monospace;">
+            Min: 5 min &nbsp;·&nbsp; Max: 300 min (5 hrs)
+          </div>
+        </div>
+
+        <div style="background:rgba(108,99,255,0.06);border:1px solid rgba(108,99,255,0.2);border-radius:var(--r-md);padding:14px;margin-bottom:20px;font-size:13px;color:var(--text2);">
+          <i class="fas fa-info-circle" style="color:var(--accent-h);margin-right:8px;"></i>
+          QR rotates every <strong style="color:var(--accent-h)">15 seconds</strong>. Session auto-ends when timer expires.
+        </div>
+
+        <button type="submit" class="btn btn-teal btn-full btn-lg" id="start-btn">
+          <i class="fas fa-play-circle"></i> Start Session &amp; Generate QR
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+<script>
+document.getElementById('start-form').addEventListener('submit', function() {
+  const btn = document.getElementById('start-btn');
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting...';
+  btn.disabled = true;
+});
+</script>
+{% endblock %}

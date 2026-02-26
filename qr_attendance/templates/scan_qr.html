@@ -1,0 +1,372 @@
+{% extends "base.html" %}
+{% block title %}Scan Attendance — ATTENDR{% endblock %}
+{% block page_title %}Mark Attendance{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('logout') }}" class="btn btn-ghost btn-sm">
+    <i class="fas fa-right-from-bracket" style="color:var(--red)"></i> Sign Out
+  </a>
+{% endblock %}
+
+{% block head %}
+<style>
+.scan-wrap {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 20px;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+/* ── CAMERA CARD ── */
+.cam-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  overflow: hidden;
+}
+.cam-header {
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.cam-body {
+  padding: 22px;
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+}
+
+/* html5-qrcode container override */
+#qr-reader {
+  width: 100% !important;
+  max-width: 300px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: none !important;
+  background: #000;
+}
+/* Hide the ugly default html5-qrcode UI elements */
+#qr-reader__header_message { display: none !important; }
+#qr-reader__dashboard_section_swaplink { display: none !important; }
+#qr-reader__status_span { display: none !important; }
+#qr-reader__camera_permission_button {
+  background: linear-gradient(135deg, var(--accent), var(--accent-h)) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: var(--r-md) !important;
+  padding: 10px 20px !important;
+  font-family: 'Syne', sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  margin-top: 10px !important;
+}
+#qr-reader__filescan_input { display: none !important; }
+#qr-reader__dashboard_section_fileupload { display: none !important; }
+#qr-reader__dashboard { padding: 8px 0 0 0 !important; background: transparent !important; border: none !important; }
+#qr-reader video {
+  border-radius: 12px !important;
+  width: 100% !important;
+}
+#qr-reader img { display: none !important; }
+#qr-reader__scan_region {
+  border-radius: 12px;
+  overflow: hidden;
+}
+#qr-reader__scan_region img { display: none !important; }
+
+/* ── STATUS BAR ── */
+#status-bar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 16px; border-radius: 50px;
+  width: 100%; max-width: 300px; transition: all .3s;
+}
+#status-bar.idle     { background:rgba(80,80,106,.2);   border:1px solid var(--border2); }
+#status-bar.scanning { background:rgba(255,209,102,.1); border:1px solid rgba(255,209,102,.4); }
+#status-bar.ok       { background:rgba(0,212,170,.12);  border:1px solid rgba(0,212,170,.5); }
+#status-bar.fail     { background:rgba(255,107,107,.1); border:1px solid rgba(255,107,107,.4); }
+#status-bar.spin     { background:rgba(108,99,255,.12); border:1px solid rgba(108,99,255,.4); }
+.sb-icon { width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0; }
+.idle .sb-icon     { background:rgba(80,80,106,.3);   color:var(--text3); }
+.scanning .sb-icon { background:rgba(255,209,102,.2); color:var(--amber); }
+.ok .sb-icon       { background:rgba(0,212,170,.2);   color:var(--teal); }
+.fail .sb-icon     { background:rgba(255,107,107,.2); color:var(--red); }
+.spin .sb-icon     { background:rgba(108,99,255,.2);  color:var(--accent-h); }
+#st-title { font-family:'Syne',sans-serif; font-weight:700; font-size:13px; }
+#st-sub   { font-size:11px; color:var(--text2); margin-top:1px; }
+@keyframes pop   { 0%{transform:scale(.4);opacity:0} 60%{transform:scale(1.2)} 100%{transform:scale(1);opacity:1} }
+@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-7px)} 75%{transform:translateX(7px)} }
+.anim-pop   { animation:pop .35s ease; }
+.anim-shake { animation:shake .35s ease; }
+
+/* ── SIDE PANEL ── */
+.loc-pill { display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:var(--r-md);font-size:12px;font-weight:500;transition:all .3s; }
+.loc-pill.ok      { background:rgba(0,212,170,.08);  border:1px solid rgba(0,212,170,.3);  color:var(--teal); }
+.loc-pill.waiting { background:rgba(255,209,102,.08); border:1px solid rgba(255,209,102,.3); color:var(--amber); }
+.loc-pill.denied  { background:rgba(255,107,107,.08); border:1px solid rgba(255,107,107,.3); color:var(--red); }
+.step { display:flex;gap:12px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--border); }
+.step:last-child { border-bottom:none; }
+.sn { width:22px;height:22px;border-radius:50%;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);flex-shrink:0;margin-top:2px; }
+
+@media (max-width:780px) {
+  .scan-wrap { grid-template-columns:1fr; }
+  #qr-reader { max-width:100%; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="scan-wrap">
+
+  <!-- ══ CAMERA ══ -->
+  <div class="cam-card">
+    <div class="cam-header">
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:16px;">
+          <i class="fas fa-qrcode" style="color:var(--accent);margin-right:8px;"></i>Scan QR Code
+        </div>
+        <div style="font-size:11px;color:var(--text2);margin-top:3px;">Point camera at the QR on teacher's screen</div>
+      </div>
+      <span class="badge badge-accent font-mono" style="font-size:10px;">
+        {{ current_user.year }} · {{ current_user.branch }}
+      </span>
+    </div>
+
+    <div class="cam-body">
+
+      <!-- html5-qrcode mounts here -->
+      <div id="qr-reader"></div>
+
+      <!-- STATUS BAR -->
+      <div id="status-bar" class="scanning">
+        <div class="sb-icon"><i class="fas fa-camera-rotate" id="st-ico"></i></div>
+        <div>
+          <div id="st-title">Camera starting...</div>
+          <div id="st-sub">Allow camera access when prompted</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ SIDE INFO ══ -->
+  <div style="display:flex;flex-direction:column;gap:14px;">
+
+    <!-- LOCATION -->
+    <div class="card">
+      <div class="card-header"><div class="card-title">Location</div></div>
+      <div class="card-body" style="padding-top:12px;padding-bottom:14px;">
+        <div class="loc-pill waiting" id="loc-pill">
+          <i class="fas fa-location-dot"></i>
+          <span id="loc-txt">Getting GPS location...</span>
+        </div>
+        <div id="loc-detail" style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);margin-top:8px;line-height:1.8;"></div>
+      </div>
+    </div>
+
+    <!-- STUDENT INFO -->
+    <div class="card">
+      <div class="card-body" style="padding:16px 18px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div class="avatar" style="width:40px;height:40px;font-size:15px;">{{ current_user.name[0].upper() }}</div>
+          <div>
+            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;">{{ current_user.name }}</div>
+            <div style="font-size:11px;color:var(--text3);font-family:'Space Mono',monospace;margin-top:2px;">
+              {{ current_user.pin }} · {{ current_user.year }} · {{ current_user.branch }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HOW IT WORKS -->
+    <div class="card">
+      <div class="card-header"><div class="card-title">How to Scan</div></div>
+      <div class="card-body" style="padding-top:8px;padding-bottom:12px;">
+        <div class="step"><div class="sn">1</div><div style="font-size:13px;color:var(--text2);">Allow <strong>camera</strong> and <strong>location</strong> access</div></div>
+        <div class="step"><div class="sn">2</div><div style="font-size:13px;color:var(--text2);">Hold phone <strong>15–25 cm</strong> from the QR code screen</div></div>
+        <div class="step"><div class="sn">3</div><div style="font-size:13px;color:var(--text2);">QR changes every 15 sec — scan the <strong>current</strong> one</div></div>
+        <div class="step"><div class="sn">4</div><div style="font-size:13px;color:var(--text2);">Must be within <strong>80m</strong> of campus</div></div>
+      </div>
+    </div>
+
+    <a href="{{ url_for('student_dashboard') }}" class="btn btn-ghost btn-full">
+      <i class="fas fa-arrow-left"></i> Dashboard
+    </a>
+    <a href="{{ url_for('logout') }}" class="btn btn-full"
+       style="background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.3);color:var(--red);">
+      <i class="fas fa-right-from-bracket"></i> Sign Out
+    </a>
+  </div>
+</div>
+
+<!-- html5-qrcode — the library that actually works on Android -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════
+   ATTENDR QR SCANNER — uses html5-qrcode (proven Android)
+   Security validations done server-side in /api/mark_attendance
+   ═══════════════════════════════════════════════════════ */
+
+var LAT = null, LON = null;
+var scanning = true;   // guard to prevent double submit
+
+/* ── GPS — start immediately so it's ready when QR scans ── */
+if (navigator.geolocation) {
+  navigator.geolocation.watchPosition(
+    function(p) {
+      LAT = p.coords.latitude;
+      LON = p.coords.longitude;
+      var acc = Math.round(p.coords.accuracy);
+      locUI('ok', '<i class="fas fa-circle-check"></i> Location ready (±' + acc + 'm)');
+      document.getElementById('loc-detail').innerHTML =
+        'LAT: ' + LAT.toFixed(6) + '<br>LON: ' + LON.toFixed(6) + '<br>ACC: ±' + acc + 'm';
+    },
+    function(e) {
+      var msgs = {1:'Location denied — enable in settings', 2:'GPS unavailable', 3:'Timed out'};
+      locUI('denied', '<i class="fas fa-location-slash"></i> ' + (msgs[e.code] || 'GPS error'));
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
+} else {
+  locUI('denied', '<i class="fas fa-location-slash"></i> GPS not supported');
+}
+
+function locUI(s, h) {
+  var el = document.getElementById('loc-pill');
+  el.className = 'loc-pill ' + s;
+  el.innerHTML = h;
+}
+
+/* ── STATUS BAR ── */
+function st(state, icon, title, sub) {
+  var bar = document.getElementById('status-bar');
+  bar.className = state;
+  document.getElementById('st-ico').className = 'fas ' + icon;
+  document.getElementById('st-title').textContent = title;
+  document.getElementById('st-sub').textContent = sub;
+  var ic = bar.querySelector('.sb-icon');
+  ic.classList.remove('anim-pop', 'anim-shake');
+  void ic.offsetWidth;
+  if (state === 'ok')   ic.classList.add('anim-pop');
+  if (state === 'fail') ic.classList.add('anim-shake');
+}
+
+/* ── QR SCAN SUCCESS CALLBACK ── */
+function onScanSuccess(decodedText) {
+  if (!scanning) return;   // already processing one scan
+  scanning = false;
+
+  // Basic format check before sending to server
+  if (!decodedText || decodedText.indexOf(':') === -1) {
+    st('fail', 'fa-circle-xmark', 'Invalid QR', 'This is not an ATTENDR QR code');
+    setTimeout(function() { scanning = true; }, 2000);
+    return;
+  }
+
+  st('spin', 'fa-spinner fa-spin', 'Verifying...', 'Checking location & QR...');
+
+  // Get location and submit — if already have GPS use it, else fresh fetch
+  if (LAT !== null && LON !== null) {
+    submitToServer(decodedText, LAT, LON);
+  } else {
+    if (!navigator.geolocation) {
+      st('fail', 'fa-location-slash', 'No GPS', 'Enable location in browser settings');
+      scanning = true;
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+        LAT = pos.coords.latitude;
+        LON = pos.coords.longitude;
+        submitToServer(decodedText, LAT, LON);
+      },
+      function() {
+        st('fail', 'fa-location-slash', 'Location denied', 'Enable GPS and try again');
+        scanning = true;
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  }
+}
+
+/* ── SUBMIT TO SERVER ── */
+function submitToServer(qrData, lat, lon) {
+  fetch('/api/mark_attendance', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ qr: qrData, lat: lat, lon: lon })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.success) {
+      st('ok', 'fa-circle-check', 'Marked!', d.message);
+      showToast(d.message, 'success');
+      // Stop scanner after success
+      try { html5Qrcode.stop(); } catch(e) {}
+      setTimeout(function() {
+        window.location.href = '{{ url_for("student_dashboard") }}';
+      }, 2000);
+    } else {
+      st('fail', 'fa-circle-xmark', 'Failed', d.message);
+      showToast(d.message, 'error');
+      // Allow retry after 3s
+      setTimeout(function() {
+        scanning = true;
+        st('scanning', 'fa-camera-rotate', 'Scanning...', 'Point at QR code');
+      }, 3000);
+    }
+  })
+  .catch(function() {
+    st('fail', 'fa-wifi', 'Network error', 'Check connection and try again');
+    setTimeout(function() {
+      scanning = true;
+      st('scanning', 'fa-camera-rotate', 'Scanning...', 'Point at QR code');
+    }, 3000);
+  });
+}
+
+/* ── START html5-qrcode SCANNER ── */
+var html5Qrcode = new Html5Qrcode("qr-reader");
+
+var config = {
+  fps: 10,                  // scan attempts per second
+  qrbox: { width: 250, height: 250 },
+  aspectRatio: 1.0,
+  supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
+  rememberLastUsedCamera: true,
+  showTorchButtonIfSupported: true   // flashlight button for dark rooms
+};
+
+html5Qrcode.start(
+  { facingMode: "environment" },     // back camera
+  config,
+  onScanSuccess,
+  function(errorMsg) {
+    // scan errors are normal (no QR in frame) — don't show to user
+  }
+)
+.then(function() {
+  st('scanning', 'fa-camera-rotate', 'Scanning...', 'Hold phone 15–25 cm from QR');
+})
+.catch(function(err) {
+  // Back camera failed — try any camera
+  html5Qrcode.start(
+    { facingMode: "user" },
+    config,
+    onScanSuccess,
+    function() {}
+  )
+  .then(function() {
+    st('scanning', 'fa-camera-rotate', 'Scanning...', 'Hold phone 15–25 cm from QR');
+  })
+  .catch(function(err2) {
+    st('fail', 'fa-video-slash', 'Camera unavailable', 'Allow camera access in browser settings');
+    showToast('Camera access denied. Please allow camera and refresh.', 'error');
+  });
+});
+
+// Clean up camera when leaving page
+window.addEventListener('beforeunload', function() {
+  try { html5Qrcode.stop(); } catch(e) {}
+});
+</script>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Suspicious Activity — ATTENDR{% endblock %}
+{% block page_title %}Security & Suspicious Activity{% endblock %}
+
+{% block content %}
+
+<!-- SUSPENDED USERS -->
+{% if suspended %}
+<div style="margin-bottom:20px;">
+  <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--red);letter-spacing:2px;margin-bottom:12px;">SUSPENDED ACCOUNTS ({{ suspended|length }})</div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    {% for u in suspended %}
+    <div style="padding:10px 16px;background:rgba(255,107,107,0.06);border:1px solid rgba(255,107,107,0.3);border-radius:var(--r-md);display:flex;align-items:center;gap:12px;">
+      <div class="avatar" style="width:30px;height:30px;font-size:11px;background:linear-gradient(135deg,var(--red),var(--red-d));">{{ u.name[0].upper() }}</div>
+      <div>
+        <div style="font-weight:500;font-size:13px;">{{ u.name }}</div>
+        <div class="font-mono text-xs text-muted">{{ u.pin }}</div>
+      </div>
+      <form method="POST" action="{{ url_for('toggle_suspend', uid=u.id) }}">
+        <button class="btn btn-ghost btn-sm" style="color:var(--teal);">
+          <i class="fas fa-lock-open"></i> Unsuspend
+        </button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- LOGS TABLE -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title"><i class="fas fa-shield-exclamation" style="color:var(--red);margin-right:8px"></i>Suspicious Activity Log</div>
+    <span class="badge badge-danger">{{ logs|length }} events</span>
+  </div>
+  <div class="card-body" style="padding:0;">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>TIME</th>
+            <th>USER</th>
+            <th>REASON</th>
+            <th>DETAIL</th>
+            <th>IP</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in logs %}
+          <tr>
+            <td class="font-mono text-xs text-muted no-wrap">{{ log.timestamp.strftime('%d %b %H:%M:%S') }}</td>
+            <td>
+              {% if log.user %}
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <div class="avatar" style="width:26px;height:26px;font-size:10px;">{{ log.user.name[0].upper() }}</div>
+                  <span style="font-size:13px;">{{ log.user.name }}</span>
+                </div>
+              {% else %}
+                <span class="text-muted">Unknown</span>
+              {% endif %}
+            </td>
+            <td>
+              {% set colors = {'TOKEN_MISMATCH': 'danger', 'BATCH_MISMATCH': 'amber', 'OUTSIDE_CAMPUS': 'amber', 'WRONG_PASSWORD': 'danger', 'INVALID_PIN': 'neutral'} %}
+              <span class="badge badge-{{ colors.get(log.reason, 'neutral') }}">{{ log.reason }}</span>
+            </td>
+            <td class="text-xs text-muted" style="max-width:240px;white-space:normal;">{{ log.detail or '—' }}</td>
+            <td class="font-mono text-xs text-muted">{{ log.ip_address or '—' }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5">
+              <div class="empty-state"><i class="fas fa-shield-check"></i><p>No suspicious activity recorded. System is clean.</p></div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

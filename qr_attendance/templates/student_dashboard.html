@@ -1,0 +1,358 @@
+{% extends "base.html" %}
+{% block title %}Student Dashboard — ATTENDR{% endblock %}
+{% block page_title %}My Attendance{% endblock %}
+
+{% block head %}
+<style>
+.student-grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 20px;
+}
+
+.overall-ring-wrap {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 24px;
+  background: var(--panel2);
+  border-radius: var(--r-lg);
+  margin-bottom: 24px;
+  border: 1px solid var(--border);
+}
+
+.big-ring {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  flex-shrink: 0;
+}
+
+.big-ring svg { width: 120px; height: 120px; transform: rotate(-90deg); }
+.big-ring-bg   { fill: none; stroke: var(--border2); stroke-width: 8; }
+.big-ring-fill { fill: none; stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 1.5s cubic-bezier(0.4,0,0.2,1); }
+
+.big-ring-value {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.big-ring-label {
+  font-size: 10px;
+  color: var(--text3);
+  font-family: 'Space Mono', monospace;
+  letter-spacing: 1px;
+}
+
+.overall-stats {
+  flex: 1;
+}
+
+.overall-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.overall-stat:last-child { border-bottom: none; }
+
+.overall-stat-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 1px;
+}
+
+.overall-stat-val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+}
+
+/* SUBJECT ROWS */
+.subject-row {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+.subject-row:last-child { border-bottom: none; }
+
+.subject-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.subject-name {
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: capitalize;
+}
+
+.subject-pct {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 20px;
+}
+
+.subject-meta {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--text3);
+  margin-top: 4px;
+}
+
+/* WARNING STRIP */
+.warning-strip {
+  background: rgba(255,107,107,0.08);
+  border: 1px solid rgba(255,107,107,0.25);
+  border-radius: var(--r-md);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: var(--red);
+}
+
+/* ACTIVE SESSION CARD */
+.active-session-card {
+  background: rgba(0,212,170,0.06);
+  border: 1px solid rgba(0,212,170,0.25);
+  border-radius: var(--r-lg);
+  padding: 20px;
+  margin-bottom: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.active-session-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 80% at 100% 0%, rgba(0,212,170,0.08), transparent);
+  pointer-events: none;
+}
+
+/* RECENT TABLE */
+.session-table td { vertical-align: middle; }
+.check-icon { color: var(--teal); }
+.cross-icon { color: var(--text3); }
+
+@media (max-width: 1000px) {
+  .student-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- WARNINGS -->
+{% if stats.warning %}
+<div class="warning-strip">
+  <i class="fas fa-triangle-exclamation"></i>
+  <strong>Low Attendance Warning!</strong> Your overall attendance is {{ stats.overall_pct }}% — minimum required is 75%.
+</div>
+{% endif %}
+
+<!-- ACTIVE SESSION ALERT -->
+{% if active_session %}
+<div class="active-session-card">
+  <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+    <div>
+      <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--teal);letter-spacing:2px;margin-bottom:6px;">
+        <span class="live-dot"></span> LIVE CLASS NOW
+      </div>
+      <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;text-transform:capitalize;">
+        {{ active_session.subject.name }}
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin-top:4px;font-family:'Space Mono',monospace;">
+        Ends at {{ active_session.expires_at.strftime('%I:%M %p') }}
+      </div>
+    </div>
+    <a href="{{ url_for('scan_qr') }}" class="btn btn-teal btn-lg">
+      <i class="fas fa-qrcode"></i> Scan Now
+    </a>
+  </div>
+</div>
+{% endif %}
+
+<div class="student-grid">
+
+  <!-- LEFT: STATS -->
+  <div style="display:flex; flex-direction:column; gap:20px;">
+
+    <!-- OVERALL RING -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-chart-pie" style="color:var(--accent);margin-right:8px"></i>Overall Attendance</div>
+      </div>
+      <div class="card-body">
+        <div class="overall-ring-wrap">
+          {% set pct = stats.overall_pct %}
+          {% set color = 'var(--teal)' if pct >= 75 else ('var(--amber)' if pct >= 60 else 'var(--red)') %}
+          {% set circ = 339.3 %}
+
+          <div class="big-ring">
+            <svg viewBox="0 0 120 120">
+              <circle class="big-ring-bg" cx="60" cy="60" r="54"/>
+              <circle class="big-ring-fill" cx="60" cy="60" r="54"
+                      id="overall-ring"
+                      stroke-dasharray="{{ circ }}"
+                      stroke-dashoffset="{{ circ }}"
+                      data-pct="{{ pct }}"
+                      data-circ="{{ circ }}"
+                      style="stroke: {{ color }}"/>
+            </svg>
+            <div class="big-ring-value" style="color: {{ color }}">
+              <span>{{ pct }}</span>
+              <span class="big-ring-label">%</span>
+            </div>
+          </div>
+
+          <div class="overall-stats">
+            <div class="overall-stat">
+              <span class="overall-stat-label">TOTAL CLASSES</span>
+              <span class="overall-stat-val gradient-text">{{ stats.total_sessions }}</span>
+            </div>
+            <div class="overall-stat">
+              <span class="overall-stat-label">ATTENDED</span>
+              <span class="overall-stat-val" style="color:var(--teal)">{{ stats.attended }}</span>
+            </div>
+            <div class="overall-stat">
+              <span class="overall-stat-label">MISSED</span>
+              <span class="overall-stat-val" style="color:var(--red)">{{ stats.total_sessions - stats.attended }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUBJECT BREAKDOWN -->
+        <div>
+          <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:2px;margin-bottom:16px;">SUBJECT-WISE BREAKDOWN</div>
+          {% for subj in stats.breakdown %}
+          <div class="subject-row">
+            <div class="subject-header">
+              <div>
+                <div class="subject-name">{{ subj.subject }}</div>
+                <div class="subject-meta">{{ subj.attended }}/{{ subj.conducted }} classes</div>
+              </div>
+              <div style="text-align:right;">
+                <div class="subject-pct" style="color:{{ 'var(--teal)' if subj.percentage >= 75 else ('var(--amber)' if subj.percentage >= 60 else 'var(--red)') }}">
+                  {{ subj.percentage }}%
+                </div>
+                {% if subj.warning %}
+                  <span class="badge badge-danger" style="font-size:9px;">LOW</span>
+                {% endif %}
+              </div>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill {{ 'good' if subj.percentage >= 75 else ('warning' if subj.percentage >= 60 else 'danger') }}"
+                   data-pct="{{ subj.percentage }}" style="width:0%"></div>
+            </div>
+          </div>
+          {% else %}
+          <div class="empty-state">
+            <i class="fas fa-book-open"></i>
+            <p>No subjects found for your batch.</p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT -->
+  <div style="display:flex;flex-direction:column;gap:16px;">
+
+    <!-- PROFILE CARD -->
+    <div class="card">
+      <div class="card-body" style="text-align:center; padding:28px;">
+        <div class="avatar" style="width:64px;height:64px;font-size:24px;margin:0 auto 14px;">
+          {{ current_user.name[0].upper() }}
+        </div>
+        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:16px;margin-bottom:4px;">
+          {{ current_user.name }}
+        </div>
+        <div class="badge badge-accent" style="margin-bottom:12px;">{{ current_user.pin }}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;">
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px;">
+            <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;margin-bottom:4px;">YEAR</div>
+            <div style="font-family:'Syne',sans-serif;font-weight:700;">{{ current_user.year }}</div>
+          </div>
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px;">
+            <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;margin-bottom:4px;">BRANCH</div>
+            <div style="font-family:'Syne',sans-serif;font-weight:700;">{{ current_user.branch }}</div>
+          </div>
+        </div>
+        <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;">
+          <a href="{{ url_for('scan_qr') }}" class="btn btn-primary btn-full">
+            <i class="fas fa-qrcode"></i> Mark Attendance
+          </a>
+          <a href="{{ url_for('logout') }}" class="btn btn-full"
+             style="background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.25);color:var(--red);">
+            <i class="fas fa-right-from-bracket"></i> Sign Out
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- RECENT SESSIONS -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Recent Classes</div>
+      </div>
+      <div style="overflow:hidden;">
+        {% for sess in recent_sessions %}
+        {% set attended = sess.id in attended_ids %}
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 20px;border-bottom:1px solid var(--border);">
+          <div style="width:32px;height:32px;border-radius:50%;background:{{ 'rgba(0,212,170,0.15)' if attended else 'rgba(80,80,106,0.2)' }};display:flex;align-items:center;justify-content:center;">
+            <i class="fas fa-{{ 'check' if attended else 'times' }}" style="color:{{ 'var(--teal)' if attended else 'var(--text3)' }};font-size:12px;"></i>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:500;font-family:'Syne',sans-serif;text-transform:capitalize;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+              {{ sess.subject.name }}
+            </div>
+            <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;">
+              {{ sess.created_at.strftime('%d %b') }}
+            </div>
+          </div>
+          {% if attended %}
+            <span class="badge badge-teal" style="font-size:9px;">PRESENT</span>
+          {% else %}
+            <span class="badge badge-neutral" style="font-size:9px;">ABSENT</span>
+          {% endif %}
+        </div>
+        {% else %}
+        <div class="empty-state" style="padding:30px;">
+          <i class="fas fa-calendar"></i>
+          <p>No classes yet</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// Animate overall ring on load
+document.addEventListener('DOMContentLoaded', () => {
+  const ring = document.getElementById('overall-ring');
+  if (ring) {
+    const pct   = parseFloat(ring.dataset.pct);
+    const circ  = parseFloat(ring.dataset.circ);
+    const offset = circ * (1 - pct / 100);
+    setTimeout(() => ring.style.strokeDashoffset = offset, 200);
+  }
+});
+</script>
+{% endblock %}

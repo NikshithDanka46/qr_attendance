@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}Students — ATTENDR{% endblock %}
+{% block page_title %}Student Management{% endblock %}
+{% block topbar_actions %}
+  <button class="btn btn-primary btn-sm" onclick="document.getElementById('add-modal').classList.add('open')">
+    <i class="fas fa-user-plus"></i> Add Student
+  </button>
+{% endblock %}
+
+{% block content %}
+
+<!-- FILTER BAR -->
+<form method="GET" action="{{ url_for('student_info') }}">
+  <div class="filter-bar" style="margin-bottom:20px;">
+    <div class="form-group">
+      <label class="form-label">SEARCH</label>
+      <input type="text" name="search" class="form-control" placeholder="Name or PIN..." value="{{ search }}"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">YEAR</label>
+      <select name="year" class="form-control">
+        <option value="">All Years</option>
+        <option {% if year == '1st Year' %}selected{% endif %}>1st Year</option>
+        <option {% if year == '2nd Year' %}selected{% endif %}>2nd Year</option>
+        <option {% if year == '3rd Year' %}selected{% endif %}>3rd Year</option>
+        <option {% if year == '4th Year' %}selected{% endif %}>4th Year</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">BRANCH</label>
+      <select name="branch" class="form-control">
+        <option value="">All</option>
+        <option {% if branch == 'CS' %}selected{% endif %}>CS</option>
+        <option {% if branch == 'IT' %}selected{% endif %}>IT</option>
+        <option {% if branch == 'EC' %}selected{% endif %}>EC</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Search</button>
+    <a href="{{ url_for('student_info') }}" class="btn btn-ghost"><i class="fas fa-rotate-left"></i></a>
+  </div>
+</form>
+
+<!-- TABLE -->
+<div class="card">
+  <div class="card-body" style="padding:0;">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>STUDENT</th>
+            <th>PIN</th>
+            <th>BATCH</th>
+            <th>ATTENDED</th>
+            <th>TOTAL</th>
+            <th>PERCENTAGE</th>
+            <th>STATUS</th>
+            <th>ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in students %}
+          {% set s = item.user %}
+          <tr>
+            <td>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div class="avatar" style="width:34px;height:34px;font-size:13px;
+                  background:linear-gradient(135deg,
+                    {% if item.pct >= 75 %}var(--teal),var(--teal-d)
+                    {% elif item.pct >= 60 %}var(--amber),var(--amber-d)
+                    {% else %}var(--red),var(--red-d){% endif %});">
+                  {{ s.name[0].upper() }}
+                </div>
+                <div>
+                  <div style="font-weight:500;font-size:13px;">{{ s.name }}</div>
+                  <div class="text-xs text-muted">Last login: {{ s.last_login.strftime('%d %b %H:%M') if s.last_login else 'Never' }}</div>
+                </div>
+              </div>
+            </td>
+            <td><span class="badge badge-neutral font-mono">{{ s.pin }}</span></td>
+            <td class="text-sm text-muted">{{ s.year }} · {{ s.branch }}</td>
+            <td style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--teal);">{{ item.attended }}</td>
+            <td style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--text2);">{{ item.total }}</td>
+            <td style="min-width:120px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-family:'Syne',sans-serif;font-weight:700;color:
+                  {{ 'var(--teal)' if item.pct >= 75 else ('var(--amber)' if item.pct >= 60 else 'var(--red)') }}">
+                  {{ item.pct }}%
+                </span>
+                <div class="progress-bar" style="flex:1;">
+                  <div class="progress-fill {{ 'good' if item.pct >= 75 else ('warning' if item.pct >= 60 else 'danger') }}"
+                       data-pct="{{ item.pct }}" style="width:0%"></div>
+                </div>
+              </div>
+            </td>
+            <td>
+              {% if s.is_suspended %}
+                <span class="badge badge-danger">SUSPENDED</span>
+              {% elif not s.is_active %}
+                <span class="badge badge-neutral">INACTIVE</span>
+              {% else %}
+                <span class="badge badge-teal">ACTIVE</span>
+              {% endif %}
+            </td>
+            <td>
+              <div style="display:flex;gap:6px;">
+                <form method="POST" action="{{ url_for('toggle_suspend', uid=s.id) }}" style="display:inline;">
+                  <button type="submit" class="btn btn-ghost btn-icon btn-sm"
+                          data-tip="{{ 'Unsuspend' if s.is_suspended else 'Suspend' }}"
+                          onclick="return confirm('{{ 'Unsuspend' if s.is_suspended else 'Suspend' }} {{ s.name }}?')">
+                    <i class="fas fa-{{ 'lock-open' if s.is_suspended else 'lock' }}"
+                       style="color:{{ 'var(--teal)' if s.is_suspended else 'var(--amber)' }}"></i>
+                  </button>
+                </form>
+                <form method="POST" action="{{ url_for('delete_student', uid=s.id) }}" style="display:inline;">
+                  <button type="submit" class="btn btn-ghost btn-icon btn-sm"
+                          data-tip="Delete"
+                          onclick="return confirm('Permanently delete {{ s.name }}? This cannot be undone.')">
+                    <i class="fas fa-trash" style="color:var(--red)"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8">
+              <div class="empty-state"><i class="fas fa-users-slash"></i><p>No students found.</p></div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% if students %}
+  <div class="card-footer text-muted text-sm">
+    Showing {{ students|length }} student{{ 's' if students|length != 1 else '' }}
+  </div>
+  {% endif %}
+</div>
+
+<!-- ADD STUDENT MODAL -->
+<div class="modal-backdrop" id="add-modal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <div class="modal-title"><i class="fas fa-user-plus" style="color:var(--teal);margin-right:10px"></i>Add New Student</div>
+    <form method="POST" action="{{ url_for('admin_add_student') }}">
+      <div class="form-group">
+        <label class="form-label">FULL NAME</label>
+        <input type="text" name="name" class="form-control" placeholder="Student's full name" required/>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">PIN / ROLL NUMBER</label>
+          <input type="text" name="pin" class="form-control" placeholder="e.g. 23005-CS-055" required/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">PASSWORD</label>
+          <input type="password" name="password" class="form-control" placeholder="Temporary password" required/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">YEAR</label>
+          <select name="year" class="form-control" required>
+            <option value="">Select</option>
+            <option>1st Year</option>
+            <option>2nd Year</option>
+            <option>3rd Year</option>
+            <option>4th Year</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">BRANCH</label>
+          <select name="branch" class="form-control" required>
+            <option value="">Select</option>
+            <option>CS</option>
+            <option>IT</option>
+            <option>EC</option>
+            <option>ME</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('add-modal').classList.remove('open')">Cancel</button>
+        <button type="submit" class="btn btn-teal" style="flex:1">
+          <i class="fas fa-plus"></i> Add Student
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

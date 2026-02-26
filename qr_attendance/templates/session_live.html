@@ -1,0 +1,549 @@
+{% extends "base.html" %}
+{% block title %}Live Session — {{ sess.subject.name.title() }}{% endblock %}
+{% block page_title %}Live Session{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('admin_dashboard') }}" class="btn btn-ghost btn-sm">
+    <i class="fas fa-arrow-left"></i> Dashboard
+  </a>
+{% endblock %}
+
+{% block head %}
+<style>
+.live-layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 24px;
+}
+
+/* QR PANEL */
+.qr-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  position: relative;
+}
+
+.qr-header {
+  padding: 24px 28px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.session-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  letter-spacing: 2px;
+  text-transform: capitalize;
+}
+
+.qr-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 36px 28px;
+  position: relative;
+}
+
+/* ROTATING QR */
+.qr-container {
+  position: relative;
+  width: 280px;
+  height: 280px;
+  margin-bottom: 24px;
+}
+
+.qr-frame {
+  position: absolute;
+  inset: -12px;
+  border-radius: 20px;
+  background: conic-gradient(var(--accent), var(--teal), var(--accent));
+  animation: qrSpin 3s linear infinite;
+  padding: 2px;
+}
+
+@keyframes qrSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.qr-inner {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  background: white;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  overflow: hidden;
+}
+
+.qr-inner img, .qr-inner canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.qr-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(7,7,9,0.92);
+  border-radius: 16px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.qr-overlay.visible { opacity: 1; }
+
+.qr-overlay i { font-size: 32px; color: var(--red); }
+.qr-overlay p { font-family: 'Syne', sans-serif; font-weight: 700; color: var(--text); }
+
+/* COUNTDOWN RINGS */
+.countdown-section {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.countdown-item {
+  text-align: center;
+}
+
+.ring-wrap {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 8px;
+}
+
+.ring-wrap svg {
+  width: 80px;
+  height: 80px;
+  transform: rotate(-90deg);
+}
+
+.ring-bg {
+  fill: none;
+  stroke: var(--border2);
+  stroke-width: 4;
+}
+
+.ring-fill {
+  fill: none;
+  stroke-width: 4;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.5s linear;
+}
+
+.ring-fill.qr-ring    { stroke: var(--accent); }
+.ring-fill.sess-ring  { stroke: var(--teal); }
+
+.ring-value {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+}
+
+.ring-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 1.5px;
+}
+
+/* PULSE flash on refresh */
+@keyframes qrRefresh {
+  0%   { opacity: 0.3; transform: scale(0.97); }
+  50%  { opacity: 1;   transform: scale(1.01); }
+  100% { opacity: 1;   transform: scale(1); }
+}
+
+.qr-refresh-flash {
+  animation: qrRefresh 0.4s ease;
+}
+
+/* ATTEND TABLE */
+.attend-list {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.attend-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  animation: fadeIn 0.3s ease;
+}
+.attend-row:last-child { border-bottom: none; }
+
+.attend-avatar {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--teal), var(--teal-d));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  color: #060608;
+  flex-shrink: 0;
+}
+
+.attend-name {
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.attend-meta {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--text3);
+  margin-top: 2px;
+}
+
+.attend-time {
+  margin-left: auto;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--text3);
+  white-space: nowrap;
+}
+
+/* STATUS BANNER */
+.status-banner {
+  padding: 14px 20px;
+  border-radius: var(--r-md);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.status-banner.ended {
+  background: rgba(255,107,107,0.08);
+  border: 1px solid rgba(255,107,107,0.25);
+  color: var(--red);
+}
+
+.status-banner.live {
+  background: rgba(0,212,170,0.08);
+  border: 1px solid rgba(0,212,170,0.25);
+  color: var(--teal);
+}
+
+.qr-token-display {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 1px;
+  text-align: center;
+  padding: 8px 16px;
+  background: var(--bg3);
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  word-break: break-all;
+}
+
+@media (max-width: 1100px) {
+  .live-layout { grid-template-columns: 1fr; }
+}
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"/>
+{% endblock %}
+
+{% block content %}
+
+<div id="status-banner" class="status-banner live">
+  <i class="fas fa-circle-play"></i>
+  <span id="status-text">Session is live — QR rotating every {{ qr_rotate }} seconds</span>
+</div>
+
+<div class="live-layout">
+
+  <!-- QR + CONTROLS -->
+  <div class="qr-panel">
+    <div class="qr-header">
+      <div>
+        <div class="session-title">{{ sess.subject.name }}</div>
+        <div style="font-family:'Space Mono',monospace;font-size:11px;color:var(--text3);margin-top:4px;">
+          {{ sess.year }} · {{ sess.branch }} · {{ sess.duration }} min
+        </div>
+      </div>
+      <span class="badge badge-teal" id="attend-count-badge">
+        <i class="fas fa-users"></i> <span id="attend-count">0</span> Present
+      </span>
+    </div>
+
+    <div class="qr-body">
+
+      <!-- COUNTDOWN RINGS -->
+      <div class="countdown-section">
+        <div class="countdown-item">
+          <div class="ring-wrap">
+            <svg viewBox="0 0 80 80">
+              <circle class="ring-bg" cx="40" cy="40" r="34"/>
+              <circle class="ring-fill qr-ring" cx="40" cy="40" r="34"
+                      id="qr-ring"
+                      stroke-dasharray="213.6"
+                      stroke-dashoffset="0"/>
+            </svg>
+            <div class="ring-value gradient-text" id="qr-countdown">{{ qr_rotate }}</div>
+          </div>
+          <div class="ring-label">QR REFRESH</div>
+        </div>
+
+        <div style="width:1px; height:60px; background:var(--border);"></div>
+
+        <div class="countdown-item">
+          <div class="ring-wrap">
+            <svg viewBox="0 0 80 80">
+              <circle class="ring-bg" cx="40" cy="40" r="34"/>
+              <circle class="ring-fill sess-ring" cx="40" cy="40" r="34"
+                      id="sess-ring"
+                      stroke-dasharray="213.6"
+                      stroke-dashoffset="0"/>
+            </svg>
+            <div class="ring-value" style="color:var(--teal)" id="sess-countdown">--:--</div>
+          </div>
+          <div class="ring-label">SESSION LEFT</div>
+        </div>
+      </div>
+
+      <!-- QR CODE -->
+      <div class="qr-container">
+        <div class="qr-frame"></div>
+        <div class="qr-inner" id="qr-box">
+          <div id="qrcode-render"></div>
+        </div>
+        <div class="qr-overlay" id="qr-overlay">
+          <i class="fas fa-hourglass-end"></i>
+          <p>Session Ended</p>
+        </div>
+      </div>
+      <!-- TOKEN DISPLAY (hidden) -->
+      <div class="qr-token-display" id="token-display" style="display:none;">Loading...</div>
+
+      <!-- STOP BUTTON -->
+      <div style="margin-top:20px; display:flex; gap:12px; justify-content:center;">
+        <button class="btn btn-danger btn-lg" onclick="stopSession()" id="stop-btn">
+          <i class="fas fa-stop-circle"></i> Stop Session
+        </button>
+        <a href="{{ url_for('recent_class') }}" class="btn btn-ghost btn-lg">
+          <i class="fas fa-list"></i> View Records
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- LIVE ATTENDEES -->
+  <div style="display:flex; flex-direction:column; gap:16px;">
+
+    <div class="card" style="flex:1;">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="live-dot">Live Attendance</span>
+        </div>
+        <span class="badge badge-teal font-mono" id="count-badge2">0 / --</span>
+      </div>
+      <div class="card-body" style="padding:8px 0;">
+        <div class="attend-list" id="attend-list">
+          <div class="empty-state">
+            <i class="fas fa-user-clock"></i>
+            <p>Waiting for students...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SESSION INFO -->
+    <div class="card">
+      <div class="card-body">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div>
+            <div class="stat-label">SUBJECT</div>
+            <div style="font-family:'Syne',sans-serif;font-weight:700;margin-top:4px;text-transform:capitalize;">{{ sess.subject.name }}</div>
+          </div>
+          <div>
+            <div class="stat-label">DURATION</div>
+            <div style="font-family:'Syne',sans-serif;font-weight:700;margin-top:4px;">{{ sess.duration }} min</div>
+          </div>
+          <div>
+            <div class="stat-label">STARTED</div>
+            <div style="font-family:'Space Mono',monospace;font-size:11px;margin-top:4px;">{{ sess.created_at.strftime('%I:%M %p') }}</div>
+          </div>
+          <div>
+            <div class="stat-label">ENDS AT</div>
+            <div style="font-family:'Space Mono',monospace;font-size:11px;margin-top:4px;">{{ sess.expires_at.strftime('%I:%M %p') }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+const SESSION_ID    = {{ sess.id }};
+const QR_INTERVAL   = {{ qr_rotate }};
+const SESS_DURATION = {{ sess.duration * 60 }};   // in seconds
+const circumference = 2 * Math.PI * 34;           // r=34
+
+let qrCode      = null;
+let sessionEnded = false;
+let knownAttendees = [];
+let prevToken   = '';
+let pollInterval;
+
+// ─── INIT QR ───
+function initQR(data) {
+  const box = document.getElementById('qrcode-render');
+  box.innerHTML = '';
+  if (qrCode) { qrCode = null; }
+  qrCode = new QRCode(box, {
+    text: data,
+    width: 256,
+    height: 256,
+    colorDark: '#000000',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.L   // L = least dense = easiest for phone cameras to scan
+  });
+}
+
+// ─── UPDATE RINGS ───
+function updateQRRing(secondsLeft) {
+  const fraction = secondsLeft / QR_INTERVAL;
+  const offset   = circumference * (1 - fraction);
+  document.getElementById('qr-ring').style.strokeDashoffset = offset;
+  document.getElementById('qr-countdown').textContent = secondsLeft;
+
+  // Colour urgency
+  const ring = document.getElementById('qr-ring');
+  if (secondsLeft <= 4)       ring.style.stroke = 'var(--red)';
+  else if (secondsLeft <= 8)  ring.style.stroke = 'var(--amber)';
+  else                         ring.style.stroke = 'var(--accent)';
+}
+
+function updateSessRing(secondsLeft) {
+  const fraction = secondsLeft / SESS_DURATION;
+  const offset   = circumference * (1 - fraction);
+  document.getElementById('sess-ring').style.strokeDashoffset = offset;
+
+  const m = Math.floor(secondsLeft / 60).toString().padStart(2,'0');
+  const s = (secondsLeft % 60).toString().padStart(2,'0');
+  document.getElementById('sess-countdown').textContent = `${m}:${s}`;
+}
+
+// ─── UPDATE ATTENDEES LIST ───
+function updateAttendList(attendances) {
+  if (!attendances || attendances.length === 0) return;
+  const list = document.getElementById('attend-list');
+
+  // If new arrivals
+  if (attendances.length !== knownAttendees.length) {
+    list.innerHTML = attendances.map(a => `
+      <div class="attend-row">
+        <div class="attend-avatar">${a.name[0].toUpperCase()}</div>
+        <div>
+          <div class="attend-name">${a.name}</div>
+          <div class="attend-meta">${a.pin} · ${a.is_manual ? '✏️ Manual' : '📍 QR Scan'}</div>
+        </div>
+        <div class="attend-time">${a.time}</div>
+      </div>
+    `).join('');
+    knownAttendees = attendances;
+
+    // Notify
+    if (attendances.length > 0 && knownAttendees.length < attendances.length) {
+      showToast(`${attendances[attendances.length-1].name} marked attendance!`, 'success', 2500);
+    }
+  }
+
+  const cnt = attendances.length;
+  document.getElementById('attend-count').textContent = cnt;
+  document.getElementById('count-badge2').textContent = `${cnt} Present`;
+}
+
+// ─── POLL STATUS ───
+function pollStatus() {
+  fetch(`/api/session/${SESSION_ID}/status`)
+    .then(r => r.json())
+    .then(data => {
+
+      if (!data.is_active || data.session_seconds_remaining <= 0) {
+        endSession();
+        return;
+      }
+
+      updateSessRing(data.session_seconds_remaining);
+      updateQRRing(data.qr_seconds_remaining);
+
+      // If token rotated — regenerate QR
+      if (data.qr_data !== prevToken) {
+        prevToken = data.qr_data;
+        document.getElementById('qr-box').classList.add('qr-refresh-flash');
+        setTimeout(() => document.getElementById('qr-box').classList.remove('qr-refresh-flash'), 400);
+        initQR(data.qr_data);
+        document.getElementById('token-display').textContent = `Token: ${data.token.slice(0,8)}...${data.token.slice(-8)}`;
+      }
+
+      if (data.attendances) updateAttendList(data.attendances);
+      document.getElementById('attend-count').textContent = data.attend_count;
+      document.getElementById('count-badge2').textContent = `${data.attend_count} Present`;
+    })
+    .catch(console.error);
+}
+
+function endSession() {
+  if (sessionEnded) return;
+  sessionEnded = true;
+  clearInterval(pollInterval);
+
+  document.getElementById('qr-overlay').classList.add('visible');
+  document.getElementById('qr-ring').style.stroke = 'var(--text3)';
+  document.getElementById('sess-ring').style.stroke = 'var(--text3)';
+  document.getElementById('sess-countdown').textContent = '00:00';
+
+  const banner = document.getElementById('status-banner');
+  banner.className = 'status-banner ended';
+  banner.innerHTML = '<i class="fas fa-circle-stop"></i><span>Session has ended</span>';
+
+  document.getElementById('stop-btn').disabled = true;
+  document.getElementById('stop-btn').innerHTML = '<i class="fas fa-check-circle"></i> Session Ended';
+
+  showToast('Session ended successfully!', 'info');
+}
+
+function stopSession() {
+  if (!confirm('Stop this session? Students will no longer be able to mark attendance.')) return;
+  fetch(`/api/session/${SESSION_ID}/stop`, { method: 'POST' })
+    .then(() => endSession());
+}
+
+// ─── START ───
+pollStatus();
+pollInterval = setInterval(pollStatus, 2000);   // Poll every 2s
+</script>
+{% endblock %}
